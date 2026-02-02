@@ -95,3 +95,4 @@ server/
 
 **Forgot passphrase:** Data cannot be recovered. This is intentional.
 
+**This app is still under development, so there might be some bugs. I’m fixing things as they come up -- feel free to email me if you spot anything!**
