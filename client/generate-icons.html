@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Generate Guardfin Icons</title>
+    <style>
+        body { font-family: system-ui; padding: 20px; background: #f5f5f5; }
+        .container { max-width: 800px; margin: 0 auto; }
+        h1 { color: #6366f1; }
+        .icons { display: flex; flex-wrap: wrap; gap: 20px; margin: 20px 0; }
+        .icon-item { text-align: center; background: white; padding: 15px; border-radius: 10px; }
+        .icon-item canvas { display: block; margin: 0 auto 10px; }
+        button { background: #6366f1; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-size: 16px; }
+        button:hover { background: #5558e3; }
+        .instructions { background: white; padding: 20px; border-radius: 10px; margin-top: 20px; }
+        code { background: #e5e7eb; padding: 2px 6px; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔒 Guardfin Icon Generator</h1>
+        <p>Click the button below to generate and download all PWA icons.</p>
+        
+        <button onclick="generateAndDownloadAll()">📥 Download All Icons</button>
+        
+        <div class="icons" id="iconPreview"></div>
+        
+        <div class="instructions">
+            <h3>Instructions:</h3>
+            <ol>
+                <li>Click "Download All Icons" button above</li>
+                <li>A ZIP file will download with all icon sizes</li>
+                <li>Extract the icons to your <code>client/icons/</code> folder</li>
+                <li>Your PWA is ready to install!</li>
+            </ol>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script>
+        const sizes = [16, 32, 72, 96, 128, 144, 152, 192, 384, 512];
+        
+        function drawIcon(canvas, size) {
+            const ctx = canvas.getContext('2d');
+            canvas.width = size;
+            canvas.height = size;
+            
+            // Background gradient
+            const gradient = ctx.createLinearGradient(0, 0, size, size);
+            gradient.addColorStop(0, '#6366f1');
+            gradient.addColorStop(1, '#8b5cf6');
+            
+            // Rounded rectangle background
+            const radius = size * 0.2;
+            ctx.beginPath();
+            ctx.roundRect(0, 0, size, size, radius);
+            ctx.fillStyle = gradient;
+            ctx.fill();
+            
+            // Shield icon
+            const centerX = size / 2;
+            const centerY = size / 2;
+            const iconSize = size * 0.5;
+            
+            ctx.fillStyle = 'white';
+            ctx.beginPath();
+            
+            // Shield path
+            const shieldTop = centerY - iconSize * 0.45;
+            const shieldBottom = centerY + iconSize * 0.45;
+            const shieldLeft = centerX - iconSize * 0.4;
+            const shieldRight = centerX + iconSize * 0.4;
+            
+            ctx.moveTo(centerX, shieldTop);
+            ctx.lineTo(shieldRight, shieldTop + iconSize * 0.15);
+            ctx.lineTo(shieldRight, centerY);
+            ctx.quadraticCurveTo(shieldRight, shieldBottom - iconSize * 0.1, centerX, shieldBottom);
+            ctx.quadraticCurveTo(shieldLeft, shieldBottom - iconSize * 0.1, shieldLeft, centerY);
+            ctx.lineTo(shieldLeft, shieldTop + iconSize * 0.15);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Dollar sign
+            ctx.fillStyle = '#6366f1';
+            ctx.font = `bold ${size * 0.25}px system-ui`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('$', centerX, centerY + size * 0.02);
+            
+            return canvas;
+        }
+        
+        function generateAndDownloadAll() {
+            const zip = new JSZip();
+            const preview = document.getElementById('iconPreview');
+            preview.innerHTML = '';
+            
+            sizes.forEach(size => {
+                const canvas = document.createElement('canvas');
+                drawIcon(canvas, size);
+                
+                // Add to preview
+                const item = document.createElement('div');
+                item.className = 'icon-item';
+                item.appendChild(canvas.cloneNode(true));
+                drawIcon(item.querySelector('canvas'), size);
+                item.innerHTML += `<div>${size}x${size}</div>`;
+                preview.appendChild(item);
+                
+                // Add to ZIP
+                const dataUrl = canvas.toDataURL('image/png');
+                const base64 = dataUrl.split(',')[1];
+                zip.file(`icon-${size}.png`, base64, {base64: true});
+            });
+            
+            // Generate and download ZIP
+            zip.generateAsync({type: 'blob'}).then(content => {
+                const url = URL.createObjectURL(content);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'guardfin-icons.zip';
+                a.click();
+                URL.revokeObjectURL(url);
+            });
+        }
+        
+        // Show preview on load
+        window.onload = () => {
+            const preview = document.getElementById('iconPreview');
+            [72, 192, 512].forEach(size => {
+                const canvas = document.createElement('canvas');
+                const item = document.createElement('div');
+                item.className = 'icon-item';
+                item.appendChild(canvas);
+                drawIcon(canvas, size);
+                item.innerHTML += `<div>${size}x${size}</div>`;
+                preview.appendChild(item);
+            });
+        };
+    </script>
+</body>
+</html>

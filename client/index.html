@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guardfin</title>
+    
+    <!-- PWA -->
+    <meta name="description" content="AI-powered financial planner with end-to-end encryption">
+    <meta name="theme-color" content="#000000">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Guardfin">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/png" sizes="32x32" href="icons/icon-32.png">
+    <link rel="apple-touch-icon" href="icons/icon-192.png">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://unpkg.com/pouchdb@8.0.1/dist/pouchdb.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+        
+        * {
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        
+        :root {
+            --bg-0: #000000;
+            --bg-1: #0a0a0a;
+            --bg-2: #111111;
+            --bg-3: #191919;
+            --bg-4: #222222;
+            --bg-5: #2a2a2a;
+            --text-0: #ffffff;
+            --text-1: #eeeeee;
+            --text-2: #a1a1a1;
+            --text-3: #6b6b6b;
+            --text-4: #404040;
+            --border: #2a2a2a;
+            --border-light: #333333;
+            --accent: #00d4aa;
+            --accent-dim: rgba(0, 212, 170, 0.1);
+            --danger: #ff4d4d;
+            --warning: #ffb800;
+        }
+        
+        [data-theme="light"] {
+            --bg-0: #ffffff;
+            --bg-1: #fafafa;
+            --bg-2: #f5f5f5;
+            --bg-3: #eeeeee;
+            --bg-4: #e5e5e5;
+            --bg-5: #d4d4d4;
+            --text-0: #000000;
+            --text-1: #171717;
+            --text-2: #525252;
+            --text-3: #a3a3a3;
+            --text-4: #d4d4d4;
+            --border: #e5e5e5;
+            --border-light: #d4d4d4;
+            --accent: #00a884;
+            --accent-dim: rgba(0, 168, 132, 0.1);
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-0);
+            color: var(--text-1);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--bg-5); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--text-3); }
+        
+        /* Typography */
+        .mono { font-family: 'JetBrains Mono', monospace; }
+        .text-balance { text-wrap: balance; }
+        
+        /* Layout */
+        .container-main {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+        
+        /* Cards */
+        .card {
+            background: var(--bg-2);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+        }
+        
+        .card-hover:hover {
+            border-color: var(--border-light);
+            background: var(--bg-3);
+        }
+        
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 10px 16px;
+            font-size: 14px;
+            font-weight: 500;
+            border-radius: 8px;
+            transition: all 0.15s ease;
+            cursor: pointer;
+            border: none;
+        }
+        
+        .btn-primary {
+            background: var(--text-0);
+            color: var(--bg-0);
+        }
+        .btn-primary:hover { opacity: 0.9; }
+        
+        .btn-secondary {
+            background: var(--bg-3);
+            color: var(--text-1);
+            border: 1px solid var(--border);
+        }
+        .btn-secondary:hover { background: var(--bg-4); border-color: var(--border-light); }
+        
+        .btn-ghost {
+            background: transparent;
+            color: var(--text-2);
+        }
+        .btn-ghost:hover { color: var(--text-1); background: var(--bg-3); }
+        
+        .btn-accent {
+            background: var(--accent);
+            color: #000;
+        }
+        .btn-accent:hover { opacity: 0.9; }
+        
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+        
+        /* Inputs */
+        .input {
+            width: 100%;
+            padding: 12px 14px;
+            background: var(--bg-1);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-1);
+            font-size: 14px;
+            transition: all 0.15s ease;
+        }
+        .input::placeholder { color: var(--text-3); }
+        .input:focus {
+            outline: none;
+            border-color: var(--text-3);
+            background: var(--bg-2);
+        }
+        
+        .input-lg {
+            padding: 14px 18px;
+            font-size: 16px;
+        }
+        
+        /* Stats */
+        .stat-value {
+            font-size: 32px;
+            font-weight: 600;
+            letter-spacing: -0.02em;
+            line-height: 1;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-3);
+        }
+        
+        /* Tags */
+        .tag {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 10px;
+            font-size: 12px;
+            font-weight: 500;
+            border-radius: 6px;
+            background: var(--bg-4);
+            color: var(--text-2);
+        }
+        
+        .tag-accent {
+            background: var(--accent-dim);
+            color: var(--accent);
+        }
+        
+        /* Navigation */
+        .nav-item {
+            padding: 8px 14px;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-3);
+            border-radius: 8px;
+            transition: all 0.15s ease;
+            cursor: pointer;
+        }
+        .nav-item:hover { color: var(--text-1); background: var(--bg-3); }
+        .nav-item.active { color: var(--text-0); background: var(--bg-3); }
+        
+        /* Progress */
+        .progress-bar {
+            height: 4px;
+            background: var(--bg-4);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: var(--text-0);
+            border-radius: 2px;
+            transition: width 0.5s ease;
+        }
+        .progress-fill.accent { background: var(--accent); }
+        .progress-fill.danger { background: var(--danger); }
+        .progress-fill.warning { background: var(--warning); }
+        
+        /* Table */
+        .table-row {
+            display: grid;
+            grid-template-columns: 100px 1fr 140px 100px 60px;
+            align-items: center;
+            padding: 14px 0;
+            border-bottom: 1px solid var(--border);
+            font-size: 14px;
+        }
+        .table-row:last-child { border-bottom: none; }
+        .table-header {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-3);
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        /* Chat */
+        .chat-bubble {
+            max-width: 85%;
+            padding: 12px 16px;
+            border-radius: 16px;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        .chat-user {
+            background: var(--text-0);
+            color: var(--bg-0);
+            margin-left: auto;
+            border-bottom-right-radius: 4px;
+        }
+        .chat-ai {
+            background: var(--bg-3);
+            color: var(--text-1);
+            border-bottom-left-radius: 4px;
+        }
+        
+        /* Animations */
+        .fade-in { animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .pulse { animation: pulse 2s ease-in-out infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        
+        /* Misc */
+        .divider { height: 1px; background: var(--border); }
+        .dot { width: 6px; height: 6px; border-radius: 50%; }
+        .dot-green { background: var(--accent); }
+        .dot-red { background: var(--danger); }
+        .dot-gray { background: var(--text-3); }
+        
+        /* Mobile nav */
+        .mobile-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--bg-1);
+            border-top: 1px solid var(--border);
+            padding: 8px 0;
+            display: none;
+            z-index: 100;
+        }
+        @media (max-width: 768px) {
+            .mobile-nav { display: flex; justify-content: space-around; }
+            body { padding-bottom: 70px; }
+            .hide-mobile { display: none !important; }
+        }
+        
+        /* Loading */
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--border);
+            border-top-color: var(--text-0);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        
+        /* Kbd */
+        kbd {
+            padding: 2px 6px;
+            font-size: 11px;
+            font-family: 'JetBrains Mono', monospace;
+            background: var(--bg-3);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--text-3);
+        }
+        
+        /* Command palette style input */
+        .command-input {
+            background: var(--bg-2);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px 20px;
+            font-size: 16px;
+            color: var(--text-0);
+            width: 100%;
+        }
+        .command-input:focus {
+            outline: none;
+            border-color: var(--text-4);
+        }
+        .command-input::placeholder {
+            color: var(--text-4);
+        }
+    </style>
+</head>
+<body data-theme="dark">
+
+<!-- Loading -->
+<div id="loadingOverlay" class="fixed inset-0 bg-black/90 flex items-center justify-center z-50 hidden">
+    <div class="text-center">
+        <div class="spinner mx-auto mb-4" style="width: 32px; height: 32px; border-width: 3px;"></div>
+        <p id="loadingText" class="text-sm text-[var(--text-2)]">Loading...</p>
+    </div>
+</div>
+
+<!-- Main App -->
+<div class="min-h-screen">
+    
+    <!-- Header -->
+    <header class="sticky top-0 z-50 backdrop-blur-xl bg-[var(--bg-0)]/80 border-b border-[var(--border)]">
+        <div class="container-main h-14 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-lg bg-[var(--text-0)] flex items-center justify-center">
+                    <span class="text-[var(--bg-0)] font-bold text-sm">G</span>
+                </div>
+                <span class="font-semibold text-[var(--text-0)]">Guardfin</span>
+                <span class="tag tag-accent text-[10px] ml-1">AI</span>
+            </div>
+            
+            <div class="flex items-center gap-2">
+                <span id="syncStatus" class="text-xs text-[var(--text-3)] flex items-center gap-2 mr-2">
+                    <span class="dot dot-gray"></span>
+                    <span class="hide-mobile">Checking...</span>
+                </span>
+                
+                <button id="themeToggle" class="btn btn-ghost p-2">
+                    <i class="fas fa-moon text-sm"></i>
+                </button>
+                
+                <button id="installBtn" class="btn btn-secondary text-xs hide-mobile">
+                    <i class="fas fa-download"></i>
+                    <span>Install</span>
+                </button>
+                
+                <button id="signOutBtn" class="btn btn-ghost p-2 text-[var(--danger)] hidden">
+                    <i class="fas fa-sign-out-alt text-sm"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Auth Section -->
+    <section id="authSection" class="container-main py-20 fade-in">
+        
+        <!-- Welcome -->
+        <div id="welcomeScreen" class="max-w-md mx-auto text-center">
+            <div class="w-16 h-16 rounded-2xl bg-[var(--text-0)] flex items-center justify-center mx-auto mb-8">
+                <span class="text-[var(--bg-0)] font-bold text-2xl">G</span>
+            </div>
+            
+            <h1 class="text-3xl font-semibold text-[var(--text-0)] mb-3 text-balance">
+                Your finances,<br>encrypted & intelligent.
+            </h1>
+            
+            <p class="text-[var(--text-2)] mb-10 text-balance">
+                Zero-knowledge architecture. AI-powered insights.<br>Your data never leaves your device unencrypted.
+            </p>
+            
+            <div class="flex flex-col gap-3">
+                <button id="showCreateBtn" class="btn btn-primary w-full py-3">
+                    Create Account
+                </button>
+                <button id="showLoginBtn" class="btn btn-secondary w-full py-3">
+                    Sign In
+                </button>
+            </div>
+            
+            <div class="mt-12 grid grid-cols-3 gap-4 text-center">
+                <div>
+                    <div class="text-lg font-semibold text-[var(--text-0)]">AES-256</div>
+                    <div class="text-xs text-[var(--text-3)]">Encryption</div>
+                </div>
+                <div>
+                    <div class="text-lg font-semibold text-[var(--text-0)]">Local</div>
+                    <div class="text-xs text-[var(--text-3)]">Data Storage</div>
+                </div>
+                <div>
+                    <div class="text-lg font-semibold text-[var(--text-0)]">AI</div>
+                    <div class="text-xs text-[var(--text-3)]">Insights</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Account Selection -->
+        <div id="accountSelectScreen" class="max-w-md mx-auto hidden">
+            <button id="backToWelcome" class="btn btn-ghost mb-6 -ml-2">
+                <i class="fas fa-arrow-left text-sm"></i>
+                <span>Back</span>
+            </button>
+            
+            <h2 class="text-xl font-semibold text-[var(--text-0)] mb-6">Select Account</h2>
+            
+            <div id="accountList" class="space-y-2 mb-4"></div>
+            
+            <button id="createFromList" class="btn btn-secondary w-full mt-4">
+                <i class="fas fa-plus"></i>
+                <span>Create New Account</span>
+            </button>
+        </div>
+
+        <!-- Login -->
+        <div id="loginScreen" class="max-w-md mx-auto hidden">
+            <button id="backToAccounts" class="btn btn-ghost mb-6 -ml-2">
+                <i class="fas fa-arrow-left text-sm"></i>
+                <span>Back</span>
+            </button>
+            
+            <h2 class="text-xl font-semibold text-[var(--text-0)] mb-2">Welcome back</h2>
+            <p class="text-sm text-[var(--text-3)] mb-6">Account: <span id="loginAccountName" class="text-[var(--text-1)]"></span></p>
+            
+            <input type="password" id="loginPassphrase" class="input input-lg mb-4" placeholder="Enter passphrase">
+            
+            <button id="loginBtn" class="btn btn-primary w-full py-3">
+                <span id="loginBtnText">Unlock</span>
+                <div id="loginSpinner" class="spinner hidden"></div>
+            </button>
+            
+            <p id="loginError" class="text-sm text-[var(--danger)] mt-3 hidden"></p>
+        </div>
+
+        <!-- Create Account -->
+        <div id="createScreen" class="max-w-md mx-auto hidden">
+            <button id="backToWelcome2" class="btn btn-ghost mb-6 -ml-2">
+                <i class="fas fa-arrow-left text-sm"></i>
+                <span>Back</span>
+            </button>
+            
+            <h2 class="text-xl font-semibold text-[var(--text-0)] mb-6">Create Account</h2>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="text-xs text-[var(--text-3)] uppercase tracking-wider mb-2 block">Account Name</label>
+                    <input type="text" id="createName" class="input" placeholder="Personal Finances">
+                </div>
+                
+                <div>
+                    <label class="text-xs text-[var(--text-3)] uppercase tracking-wider mb-2 block">Passphrase</label>
+                    <input type="password" id="createPassphrase" class="input" placeholder="Create a strong passphrase">
+                    <div class="flex items-center justify-between mt-2">
+                        <span class="text-xs text-[var(--text-4)]">Strength</span>
+                        <span id="strengthText" class="text-xs text-[var(--danger)]">Weak</span>
+                    </div>
+                    <div class="progress-bar mt-1">
+                        <div id="strengthBar" class="progress-fill" style="width: 0%"></div>
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="text-xs text-[var(--text-3)] uppercase tracking-wider mb-2 block">Confirm</label>
+                    <input type="password" id="confirmPassphrase" class="input" placeholder="Confirm passphrase">
+                </div>
+                
+                <div class="card p-4 border-[var(--warning)]/30 bg-[var(--warning)]/5">
+                    <p class="text-sm text-[var(--text-2)]">
+                        <i class="fas fa-exclamation-triangle text-[var(--warning)] mr-2"></i>
+                        Your passphrase cannot be recovered. Store it safely.
+                    </p>
+                </div>
+                
+                <button id="createBtn" class="btn btn-primary w-full py-3" disabled>
+                    <span id="createBtnText">Create Account</span>
+                    <div id="createSpinner" class="spinner hidden"></div>
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- App Content -->
+    <main id="appContent" class="hidden">
+        
+        <!-- Navigation -->
+        <nav class="border-b border-[var(--border)] sticky top-14 bg-[var(--bg-0)] z-40">
+            <div class="container-main flex items-center gap-1 py-2 overflow-x-auto hide-mobile">
+                <button data-tab="dashboard" class="nav-item active">
+                    <i class="fas fa-grid-2 mr-2"></i>Overview
+                </button>
+                <button data-tab="transactions" class="nav-item">
+                    <i class="fas fa-arrow-right-arrow-left mr-2"></i>Transactions
+                </button>
+                <button data-tab="budgets" class="nav-item">
+                    <i class="fas fa-chart-pie mr-2"></i>Budgets
+                </button>
+                <button data-tab="goals" class="nav-item">
+                    <i class="fas fa-bullseye mr-2"></i>Goals
+                </button>
+                <button data-tab="insights" class="nav-item">
+                    <i class="fas fa-sparkles mr-2"></i>AI Insights
+                </button>
+            </div>
+        </nav>
+
+        <!-- Dashboard -->
+        <div id="dashboardTab" class="tab-content container-main py-8 fade-in">
+            
+            <!-- Stats Grid -->
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                <div class="card p-5">
+                    <div class="stat-label mb-2">Expenses</div>
+                    <div class="stat-value text-[var(--text-0)]">$<span id="statExpenses">0</span></div>
+                    <div class="text-xs text-[var(--text-3)] mt-2">This month</div>
+                </div>
+                <div class="card p-5">
+                    <div class="stat-label mb-2">Income</div>
+                    <div class="stat-value text-[var(--accent)]">$<span id="statIncome">0</span></div>
+                    <div class="text-xs text-[var(--text-3)] mt-2">This month</div>
+                </div>
+                <div class="card p-5">
+                    <div class="stat-label mb-2">Budget</div>
+                    <div class="stat-value text-[var(--text-0)]"><span id="statBudgetPct">0</span>%</div>
+                    <div class="progress-bar mt-3">
+                        <div id="budgetProgressBar" class="progress-fill" style="width: 0%"></div>
+                    </div>
+                </div>
+                <div class="card p-5">
+                    <div class="stat-label mb-2">Goals</div>
+                    <div class="stat-value text-[var(--text-0)]"><span id="statGoalsPct">0</span>%</div>
+                    <div class="text-xs text-[var(--text-3)] mt-2"><span id="statGoalsCount">0</span> active</div>
+                </div>
+            </div>
+
+            <!-- Quick Add -->
+            <div class="card p-6 mb-8">
+                <div class="flex items-center gap-3 mb-4">
+                    <i class="fas fa-bolt text-[var(--accent)]"></i>
+                    <span class="font-medium text-[var(--text-0)]">Quick Add</span>
+                    <kbd class="ml-auto">N</kbd>
+                </div>
+                <div class="flex gap-3">
+                    <input type="text" id="quickAddInput" class="command-input flex-1" placeholder="Add $50 for groceries...">
+                    <button id="quickAddBtn" class="btn btn-primary px-6">
+                        <i class="fas fa-plus"></i>
+                        <span class="hide-mobile">Add</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Charts Row -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                <div class="card p-6">
+                    <h3 class="text-sm font-medium text-[var(--text-0)] mb-4">Spending Trend</h3>
+                    <div class="h-64">
+                        <canvas id="spendingChart"></canvas>
+                    </div>
+                </div>
+                <div class="card p-6">
+                    <h3 class="text-sm font-medium text-[var(--text-0)] mb-4">By Category</h3>
+                    <div class="h-64">
+                        <canvas id="categoryChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent + Insights -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="card p-6">
+                    <h3 class="text-sm font-medium text-[var(--text-0)] mb-4">Recent Transactions</h3>
+                    <div id="recentTransactions" class="space-y-3"></div>
+                </div>
+                <div class="card p-6">
+                    <h3 class="text-sm font-medium text-[var(--text-0)] mb-4 flex items-center gap-2">
+                        <i class="fas fa-sparkles text-[var(--accent)]"></i>
+                        AI Insights
+                    </h3>
+                    <div id="dashboardInsights" class="space-y-3"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Transactions -->
+        <div id="transactionsTab" class="tab-content container-main py-8 hidden">
+            
+            <!-- Search & Filters -->
+            <div class="flex flex-col lg:flex-row gap-4 mb-6">
+                <div class="relative flex-1">
+                    <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-4)]"></i>
+                    <input type="text" id="searchTransactions" class="input pl-11" placeholder="Search transactions...">
+                </div>
+                <div class="flex gap-2 flex-wrap">
+                    <select id="filterType" class="input w-auto">
+                        <option value="all">All Types</option>
+                        <option value="expense">Expenses</option>
+                        <option value="income">Income</option>
+                    </select>
+                    <select id="filterCategory" class="input w-auto">
+                        <option value="all">All Categories</option>
+                    </select>
+                    <select id="filterPeriod" class="input w-auto">
+                        <option value="all">All Time</option>
+                        <option value="month">This Month</option>
+                        <option value="week">This Week</option>
+                    </select>
+                    <button id="exportCsv" class="btn btn-secondary">
+                        <i class="fas fa-download"></i>
+                        <span class="hide-mobile">Export</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Add Transaction -->
+            <div class="card p-6 mb-6">
+                <div class="flex items-center justify-between mb-4">
+                    <span class="font-medium text-[var(--text-0)]">Add Transaction</span>
+                    <div class="flex gap-1">
+                        <button id="inputModeNlp" class="input-mode nav-item active text-xs py-1 px-3">Smart</button>
+                        <button id="inputModeManual" class="input-mode nav-item text-xs py-1 px-3">Manual</button>
+                    </div>
+                </div>
+
+                <div id="nlpInput">
+                    <textarea id="nlpText" class="input mb-3" rows="2" placeholder="$45 groceries at Walmart, $12 coffee"></textarea>
+                    <button id="parseNlp" class="btn btn-primary">
+                        <i class="fas fa-magic"></i>
+                        <span>Parse</span>
+                    </button>
+                </div>
+
+                <div id="manualInput" class="hidden">
+                    <div class="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-3">
+                        <input type="text" id="manualDesc" class="input" placeholder="Description">
+                        <input type="number" id="manualAmount" class="input" placeholder="Amount" step="0.01">
+                        <select id="manualCategory" class="input"><option value="">Category</option></select>
+                        <select id="manualType" class="input">
+                            <option value="expense">Expense</option>
+                            <option value="income">Income</option>
+                        </select>
+                        <input type="date" id="manualDate" class="input">
+                    </div>
+                    <button id="addManual" class="btn btn-primary">
+                        <i class="fas fa-plus"></i>
+                        <span>Add</span>
+                    </button>
+                </div>
+
+                <div id="transactionPreview" class="hidden mt-4 p-4 rounded-lg bg-[var(--bg-3)]">
+                    <div id="previewList" class="space-y-2 mb-3"></div>
+                    <div class="flex gap-2">
+                        <button id="confirmPreview" class="btn btn-accent flex-1">Confirm All</button>
+                        <button id="cancelPreview" class="btn btn-secondary flex-1">Cancel</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Transactions Table -->
+            <div class="card overflow-hidden">
+                <div class="table-header table-row px-6 hide-mobile">
+                    <div>Date</div>
+                    <div>Description</div>
+                    <div>Category</div>
+                    <div class="text-right">Amount</div>
+                    <div></div>
+                </div>
+                <div id="transactionsTable" class="px-6"></div>
+            </div>
+        </div>
+
+        <!-- Budgets -->
+        <div id="budgetsTab" class="tab-content container-main py-8 hidden">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="card p-6">
+                    <h3 class="text-sm font-medium text-[var(--text-0)] mb-4">Set Budget</h3>
+                    <select id="budgetCategory" class="input mb-3"><option value="">Select Category</option></select>
+                    <input type="number" id="budgetAmount" class="input mb-3" placeholder="Monthly limit ($)">
+                    <button id="addBudget" class="btn btn-primary w-full">
+                        <i class="fas fa-save"></i>
+                        <span>Save Budget</span>
+                    </button>
+                </div>
+                <div class="lg:col-span-2" id="budgetsList"></div>
+            </div>
+            
+            <div class="card p-6 mt-6">
+                <h3 class="text-sm font-medium text-[var(--text-0)] mb-4">Budget Overview</h3>
+                <div class="h-64">
+                    <canvas id="budgetChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Goals -->
+        <div id="goalsTab" class="tab-content container-main py-8 hidden">
+            <div class="card p-6 mb-6">
+                <h3 class="text-sm font-medium text-[var(--text-0)] mb-4">Create Goal</h3>
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
+                    <input type="text" id="goalName" class="input" placeholder="Goal name">
+                    <input type="number" id="goalTarget" class="input" placeholder="Target ($)">
+                    <input type="number" id="goalCurrent" class="input" placeholder="Current ($)" value="0">
+                    <input type="date" id="goalDeadline" class="input">
+                </div>
+                <button id="addGoal" class="btn btn-primary">
+                    <i class="fas fa-plus"></i>
+                    <span>Create Goal</span>
+                </button>
+            </div>
+            
+            <div id="goalsList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+        </div>
+
+        <!-- Insights -->
+        <div id="insightsTab" class="tab-content container-main py-8 hidden">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="card p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-sm font-medium text-[var(--text-0)] flex items-center gap-2">
+                            <i class="fas fa-sparkles text-[var(--accent)]"></i>
+                            AI Insights
+                        </h3>
+                        <button id="refreshInsights" class="btn btn-ghost text-xs">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                    </div>
+                    <div id="insightsList" class="space-y-3"></div>
+                </div>
+                
+                <div class="card p-6">
+                    <h3 class="text-sm font-medium text-[var(--text-0)] mb-4">Predictions</h3>
+                    <div id="predictionContent"></div>
+                </div>
+            </div>
+            
+            <div class="card p-6 mt-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-sm font-medium text-[var(--text-0)]">Reminders</h3>
+                    <button id="addReminderBtn" class="btn btn-secondary text-xs">
+                        <i class="fas fa-plus"></i>
+                        <span>Add</span>
+                    </button>
+                </div>
+                <div id="remindersList" class="space-y-2"></div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- Chat Button -->
+<button id="chatToggle" class="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-[var(--text-0)] text-[var(--bg-0)] shadow-2xl hidden z-50 hover:scale-105 transition-transform">
+    <i class="fas fa-message"></i>
+</button>
+
+<!-- Chat Window -->
+<div id="chatWindow" class="fixed bottom-24 right-6 w-96 max-w-[calc(100vw-3rem)] card shadow-2xl hidden z-50 overflow-hidden">
+    <div class="p-4 border-b border-[var(--border)] flex items-center justify-between">
+        <div class="flex items-center gap-2">
+            <div class="w-8 h-8 rounded-lg bg-[var(--accent)] flex items-center justify-center">
+                <i class="fas fa-sparkles text-black text-sm"></i>
+            </div>
+            <div>
+                <div class="font-medium text-sm text-[var(--text-0)]">Guardfin AI</div>
+                <div class="text-xs text-[var(--text-3)]">Your financial assistant</div>
+            </div>
+        </div>
+        <button id="closeChat" class="btn btn-ghost p-2">
+            <i class="fas fa-times"></i>
+        </button>
+    </div>
+    <div id="chatMessages" class="h-80 overflow-y-auto p-4 space-y-3 bg-[var(--bg-1)]"></div>
+    <div class="p-4 border-t border-[var(--border)] flex gap-2">
+        <input type="text" id="chatInput" class="input flex-1" placeholder="Ask anything...">
+        <button id="sendChat" class="btn btn-primary px-4">
+            <i class="fas fa-paper-plane"></i>
+        </button>
+    </div>
+</div>
+
+<!-- Modal -->
+<div id="modalOverlay" class="fixed inset-0 bg-black/80 hidden z-50 flex items-center justify-center p-4">
+    <div id="modalContent" class="card p-6 max-w-md w-full max-h-[90vh] overflow-y-auto"></div>
+</div>
+
+<!-- Mobile Nav -->
+<nav class="mobile-nav">
+    <button data-mobile-tab="dashboard" class="flex flex-col items-center p-2 text-[var(--text-0)]">
+        <i class="fas fa-grid-2 text-lg"></i>
+        <span class="text-[10px] mt-1">Home</span>
+    </button>
+    <button data-mobile-tab="transactions" class="flex flex-col items-center p-2 text-[var(--text-3)]">
+        <i class="fas fa-arrow-right-arrow-left text-lg"></i>
+        <span class="text-[10px] mt-1">Trans</span>
+    </button>
+    <button data-mobile-tab="budgets" class="flex flex-col items-center p-2 text-[var(--text-3)]">
+        <i class="fas fa-chart-pie text-lg"></i>
+        <span class="text-[10px] mt-1">Budget</span>
+    </button>
+    <button data-mobile-tab="goals" class="flex flex-col items-center p-2 text-[var(--text-3)]">
+        <i class="fas fa-bullseye text-lg"></i>
+        <span class="text-[10px] mt-1">Goals</span>
+    </button>
+    <button data-mobile-tab="insights" class="flex flex-col items-center p-2 text-[var(--text-3)]">
+        <i class="fas fa-sparkles text-lg"></i>
+        <span class="text-[10px] mt-1">AI</span>
+    </button>
+</nav>
+
+<script src="app.js"></script>
+
+<!-- PWA -->
+<script>
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js').then(r => console.log('SW registered')).catch(e => console.log('SW failed', e));
+}
+
+let deferredPrompt;
+const installBtn = document.getElementById('installBtn');
+
+if (window.matchMedia('(display-mode: standalone)').matches) {
+    installBtn.style.display = 'none';
+}
+
+window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    deferredPrompt = e;
+});
+
+installBtn?.addEventListener('click', async () => {
+    if (deferredPrompt) {
+        deferredPrompt.prompt();
+        await deferredPrompt.userChoice;
+        deferredPrompt = null;
+    } else {
+        alert('To install:\n\nSafari: File → Add to Dock\nChrome: Menu → Install Guardfin');
+    }
+});
+
+window.addEventListener('appinstalled', () => { installBtn.style.display = 'none'; });
+</script>
+</body>
+</html>

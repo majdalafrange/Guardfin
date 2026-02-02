@@ -1,0 +1,24 @@
+# Dependencies
+node_modules/
+
+# Logs
+*.log
+server/server.log
+
+# User data
+server/secure-data/
+
+# Config with secrets
+server/server-config.json
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# Generated icons (optional - remove if you want to include them)
+# client/icons/
